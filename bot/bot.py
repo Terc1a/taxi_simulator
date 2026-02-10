@@ -86,7 +86,7 @@ async def callback_handler_order(callback: CallbackQuery, state: FSMContext):
     :type state: FSMContext
     """
     if callback.data == "p_from":
-        await callback.message.answer("Откуда:")
+        await callback.message.answer("Данные вводятся в формате Улица, номер\nОткуда:")
         await state.set_state(Form.waiting_from)
     elif callback.data == "back":
         await callback.message.answer("Привет! Вот меню для управления:",reply_markup=get_kb())
@@ -103,9 +103,29 @@ async def process_name(message: types.Message, state: FSMContext):
     :param state: Description
     :type state: FSMContext
     """
-    await state.update_data(waiting_from=message.text)
-    await message.answer(f"Принято. Теперь введите куда направляетесь:")
-    await state.set_state(Form.waiting_to)
+    try:
+        try:
+            conv = message.text.split(',')
+            street_name = conv[0]
+            street_pos = conv[1]
+
+            if conv:
+                check_if_exist = f"SELECT * FROM streets where title = '{street_name}'"
+                cnx = mysql.connector.connect(user='root', password='12345', host='127.0.0.1', database='taxi')
+                cursor = cnx.cursor()
+                cursor.execute(check_if_exist)
+                row = cursor.fetchall()
+                if row and int(street_pos) <= int(row[0][4]):
+                    await state.update_data(waiting_from=[row[0][0], street_pos])
+                    await message.answer(f"Принято. Теперь введите куда направляетесь:")
+                    await state.set_state(Form.waiting_to)
+                else:
+                    await message.answer("Такого адреса не существует, попробуйте снова:",reply_markup=get_kb_order())
+        except:
+            await message.answer("Указан неверный формат адреса, попробуйте снова:",reply_markup=get_kb_order())
+
+    except Exception as e:
+        print('Error:', e)
 
 
 @router.message(Form.waiting_to)
@@ -118,25 +138,42 @@ async def process_age(message: types.Message, state: FSMContext):
     :param state: Description
     :type state: FSMContext
     """
-    await state.update_data(waiting_to=message.text)
-    user_data = await state.get_data()
-    now = datetime.now()
-    order_data = (str(message.from_user.id), user_data['waiting_from'], user_data['waiting_to'], now.strftime('%Y-%m-%d %H:%M:%S'))
-    create_order = ("INSERT INTO orders "
-               "(uuid, ord_from, ord_to, dtcreate) "
-               "VALUES (%s, %s, %s, %s)")
+    try:
+        try:
+            conv = message.text.split(',')
+            street_name = conv[0]
+            street_pos = conv[1]
+
+            if conv:
+                check_if_exist = f"SELECT * FROM streets where title = '{street_name}'"
+                cnx = mysql.connector.connect(user='root', password='12345', host='127.0.0.1', database='taxi')
+                cursor = cnx.cursor()
+                cursor.execute(check_if_exist)
+                row = cursor.fetchall()
+                if row and int(street_pos) <= int(row[0][4]):
+                    await state.update_data(waiting_to=message.text)
+                    user_data = await state.get_data()
+                    now = datetime.now()
+                    order_data = (str(message.from_user.id), user_data["waiting_from"][0], user_data["waiting_from"][1],int(row[0][0]), int(street_post), now.strftime('%Y-%m-%d %H:%M:%S'))
+                    create_order = ("INSERT INTO orders "
+                            "(uuid, ord_from_s, ord_from_n, ord_to_s, ord_to_n, dtcreate) "
+                            "VALUES (%s, %s, %s, %s, %s, %s)")
     
 
-    cnx = mysql.connector.connect(user='root', password='12345', host='127.0.0.1', database='taxi')
-    cursor = cnx.cursor()
-    cursor.execute(create_order, order_data)
-    cnx.commit()
-    cursor.close()
-    cnx.close()
+                    cnx = mysql.connector.connect(user='root', password='12345', host='127.0.0.1', database='taxi')
+                    cursor = cnx.cursor()
+                    cursor.execute(create_order, order_data)
+                    cnx.commit()
+                    cursor.close()
+                    cnx.close()
 
-    await message.answer(f"Заказ создан!\nНачинаем поиск водителя...")
-    await state.clear() # Сброс состояний
+                    await message.answer(f"Заказ создан!\nНачинаем поиск водителя...")
+                    await state.clear() # Сброс состояний
+        except:
+            await message.answer("Указан неверный формат адреса, попробуйте снова:",reply_markup=get_kb_order())
 
+    except Exception as e:
+        print('Error:', e)
 
 async def main() -> None:
     """
