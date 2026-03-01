@@ -1,0 +1,51 @@
+<h3>Активные заказы</h3>
+<table border="1" cellpadding="8" cellspacing="0" style="border-collapse: collapse; width: 100%;">
+  <thead>
+    <tr style="background: #f5f5f5;">
+      <th>ID</th>
+      <th>UUID</th>
+      <th>Откуда (S/N)</th>
+      <th>Куда (S/N)</th>
+      <th>Статус</th>
+      <th>Создан</th>
+      <th>Цена</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% if context %}
+      {% for ordid, order in context.items %}
+      <tr>
+        {# order — это список [id, uuid, duid, from_s, from_n, to_s, to_n, status, dtcreate, ...] #}
+        
+        {# Индексы: 0=id, 1=uuid, 3=from_s, 4=from_n, 5=to_s, 6=to_n, 7=status, 8=dtcreate, 12=price #}
+        
+        <td><strong>{{ order.0 }}</strong></td>
+        <td><code>{{ order.1 }}</code></td>
+        <td>{{ order.3 }} / {{ order.4 }}</td>
+        <td>{{ order.5 }} / {{ order.6 }}</td>
+        <td>
+          {% with status=order.7 %}
+            {% if status == 0 %}
+              <span style="background:#3498db;color:#fff;padding:3px 8px;border-radius:4px;">Новый</span>
+            {% elif status == 1 %}
+              <span style="background:#f39c12;color:#fff;padding:3px 8px;border-radius:4px;">В работе</span>
+            {% elif status == 2 %}
+              <span style="background:#2ecc71;color:#fff;padding:3px 8px;border-radius:4px;">Завершён</span>
+            {% elif status == 3 %}
+              <span style="background:#e74c3c;color:#fff;padding:3px 8px;border-radius:4px;">Отменён</span>
+            {% else %}
+              <span>{{ status }}</span>
+            {% endif %}
+          {% endwith %}
+        </td>
+        <td>{{ order.8|slice:":19" }}</td>
+        <td>{% if order.12 %}{{ order.12 }} ₽{% else %}—{% endif %}</td>
+      </tr>
+      {% endfor %}
+    {% else %}
+      <tr>
+        <td colspan="7" style="text-align:center;">Нет активных заказов</td>
+      </tr>
+    {% endif %}
+  </tbody>
+</table>
